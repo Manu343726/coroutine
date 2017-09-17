@@ -1,7 +1,7 @@
 #ifndef COROUTINE_SIZED_MEMORY_BLOCK_HPP
 #define COROUTINE_SIZED_MEMORY_BLOCK_HPP
 
-#include <cstdint>
+#include <cstddef>
 
 namespace coro
 {

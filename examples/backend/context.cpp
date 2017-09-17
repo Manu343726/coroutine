@@ -1,4 +1,4 @@
-#include <coroutine/backend/linux/context.hpp>
+#include <coroutine/backend/context.hpp>
 #include <iostream>
 
 void foo(int n);
@@ -27,6 +27,7 @@ void foo(int n)
     }
 
     std::cout << "end foo\n";
+    coro::back::swap_context(foo_ctx, main_ctx);
 }
 
 void bar(int n)
@@ -38,6 +39,7 @@ void bar(int n)
     }
 
     std::cout << "end bar\n";
+    coro::back::swap_context(foo_ctx, main_ctx);
 }
 
 int main()
@@ -47,4 +49,5 @@ int main()
     bar_ctx = coro::back::make_context(bar_call, coro::static_block(bar_stack), main_ctx);
 
     coro::back::swap_context(main_ctx, foo_ctx);
+    std::cout << "end of main thread\n";
 }

@@ -18,11 +18,11 @@ struct stateful_callback : public callback
     stateful_callback(Function function) :
         stateful_function{std::move(function)}
     {
-        callback::function = +[](void* context)
+        callback::function = static_cast<void(*)(void*)>([](void* context)
         {
             auto& stateful_function = *reinterpret_cast<Function*>(context);
             stateful_function();
-        };
+        });
         callback::context = &stateful_function;
     }
 

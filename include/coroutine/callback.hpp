@@ -10,6 +10,10 @@ struct callback
 {
     void(*function)(void*);
     void* context;
+    void invoke() const
+    {
+        function(context);
+    }
 };
 
 template<typename Function>

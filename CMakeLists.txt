@@ -19,11 +19,13 @@ set(windows_headers
 )
 set(sources
     ${srcdir}/sized_memory_block.cpp
+    ${srcdir}/backend/context_pool.cpp
 )
 set(headers
     ${includedir}/sized_memory_block.hpp
     ${includedir}/callback.hpp
-	${includedir}/backend/context.hpp
+    ${includedir}/backend/context.hpp
+    ${includedir}/backend/context_pool.hpp
 )
 
 add_library(coroutine

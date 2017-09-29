@@ -16,6 +16,12 @@ using context = ::ucontext_t;
 context get_current_context();
 void swap_context(context& from, const context& to);
 context make_context(const callback& callback, const sized_memory_block& stack, const context& return_context);
+std::size_t context_id(const context& context);
+inline void release_context(const context& context) {}
+constexpr std::size_t stack_size()
+{
+    return SIGSTKSZ*2;
+}
 
 }
 

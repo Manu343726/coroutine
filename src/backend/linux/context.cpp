@@ -89,6 +89,21 @@ context make_context(const callback& callback, const sized_memory_block& stack, 
     return result;
 }
 
+std::size_t context_id(const context& context)
+{
+    return reinterpret_cast<std::size_t>(context.uc_stack.ss_sp);
+}
+
+coro::sized_memory_block allocate_stack(std::size_t bytes)
+{
+    return coro::malloc(SIGSTKSZ*2);
+}
+
+void free_stack(sized_memory_block& stack)
+{
+    return coro::free(stack);
+}
+
 }
 
 }

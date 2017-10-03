@@ -22,11 +22,9 @@ public:
         const coro::callback* callback;
         coro::back::context last_context;
         coro::sized_memory_block stack;
+        const char* description;
+        std::size_t id;
 
-        std::size_t id() const
-        {
-            return coro::back::context_id(last_context);
-        }
         bool unused() const
         {
             return pool == nullptr;
@@ -34,20 +32,21 @@ public:
     };
 
     context_pool();
+    ~context_pool();
 
-    std::size_t make_context(const callback& callback);
+    std::size_t make_context(const callback& callback, const char* description = "");
     void switch_to(std::size_t context);
     void yield();
 
-    std::size_t main_context() const;
-    context_data& current_context();
+    const context_data& main_context() const;
+    const context_data& current_context() const;
 
 private:
     context_data _pool[128];
-    std::size_t _main_context_id = 0;
+    context_data* _main_context;
+    context_data* _current_context;
     coro::callback _pool_runner;
 
-    std::size_t current_context_id() const;
     void remove_context(std::size_t id);
     void release_context(context_data& context);
     static void pool_function(void* pool);

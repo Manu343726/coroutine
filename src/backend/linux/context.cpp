@@ -1,6 +1,7 @@
 #include <coroutine/backend/linux/context.hpp>
 #include <cstdint>
 #include <cstdarg>
+#include <sys/mman.h>
 
 static_assert(std::is_same<std::int32_t, int>::value, "int must be 32 bits wide");
 
@@ -96,12 +97,15 @@ std::size_t context_id(const context& context)
 
 coro::sized_memory_block allocate_stack(std::size_t bytes)
 {
-    return coro::malloc(SIGSTKSZ*2);
+    return {
+        ::mmap(NULL, bytes, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0),
+        bytes
+    };
 }
 
 void free_stack(sized_memory_block& stack)
 {
-    return coro::free(stack);
+    ::munmap(stack.start, stack.size);
 }
 
 }

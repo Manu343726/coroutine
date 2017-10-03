@@ -22,6 +22,8 @@ constexpr std::size_t stack_size()
 {
     return SIGSTKSZ*2;
 }
+coro::sized_memory_block allocate_stack(std::size_t bytes);
+void free_stack(sized_memory_block& stack);
 
 }
 

@@ -40,8 +40,8 @@ void bar(int n)
 
 int main()
 {
-    foo_id = coro::back::get_context_pool().make_context(foo_call);
-    bar_id = coro::back::get_context_pool().make_context(bar_call);
+    foo_id = coro::back::get_context_pool().make_context(foo_call, "foo");
+    bar_id = coro::back::get_context_pool().make_context(bar_call, "bar");
     coro::back::get_context_pool().switch_to(foo_id);
 
     std::cout << "end of main thread\n";

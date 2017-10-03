@@ -2,31 +2,34 @@
 
 using namespace coro::back;
 
-using stack = char[coro::back::stack_size()];
-
-coro::sized_memory_block get_stack(std::size_t i)
-{
-    static stack stack[128];
-    return coro::static_block(stack[i]);
-}
-
 void context_pool::pool_function(void* data)
 {
     auto* pool = reinterpret_cast<context_pool*>(data);
-    const auto& context = pool->current_context();
+    auto* context = pool->_current_context;
 
-    if(context.callback != nullptr)
+    if(context->callback != nullptr)
     {
-        context.callback->invoke();
+        context->callback->invoke();
     }
 
-    auto return_id = context.return_id;
-    pool->remove_context(context.id());
+    auto caller_id = context->caller_id;
+    auto return_id = context->return_id;
 
-    if(return_id != 0)
+    if(caller_id != 0)
+    {
+        pool->switch_to(caller_id);
+    }
+    else if(return_id != 0)
     {
         pool->switch_to(return_id);
     }
+    else
+    {
+        pool->switch_to(pool->_main_context->id);
+    }
+
+    pool->release_context(*context);
+    pool->switch_to(pool->_main_context->id);
 }
 
 context_pool::context_pool() :
@@ -34,23 +37,35 @@ context_pool::context_pool() :
 {
     for(std::size_t i = 0; i < 128; ++i)
     {
-        _pool[i].stack = get_stack(i);
+        _pool[i].stack = coro::back::allocate_stack(coro::back::stack_size());
+        _pool[i].id = i;
+        _pool[i].description = "dead";
     }
 
     _pool_runner.function = &context_pool::pool_function;
     _pool_runner.context = this;
 
     auto main_context = coro::back::get_current_context();
-    _main_context_id = coro::back::context_id(main_context);
     auto* main_context_data = find_unused_context();
     main_context_data->last_context = main_context;
     main_context_data->caller_id = 0;
     main_context_data->return_id = 0;
     main_context_data->pool = this;
     main_context_data->callback = nullptr;
+    main_context_data->description = "main context";
+    _main_context = main_context_data;
+    _current_context = _main_context;
 }
 
-std::size_t context_pool::make_context(const coro::callback& callback)
+context_pool::~context_pool()
+{
+    for(auto& context : _pool)
+    {
+        coro::back::free_stack(context.stack);
+    }
+}
+
+std::size_t context_pool::make_context(const coro::callback& callback, const char* description)
 {
     auto* context_data = find_unused_context();
 
@@ -64,11 +79,12 @@ std::size_t context_pool::make_context(const coro::callback& callback)
         context_data->stack,
         current_context().last_context
     );
-    context_data->return_id = current_context_id();
+    context_data->return_id = _current_context->id;
     context_data->caller_id = context_data->return_id;
     context_data->pool = this;
     context_data->callback = &callback;
-    return context_data->id();
+    context_data->description = description;
+    return context_data->id;
 }
 
 void context_pool::switch_to(std::size_t context_id)
@@ -77,9 +93,10 @@ void context_pool::switch_to(std::size_t context_id)
 
     if(context != nullptr)
     {
-        auto& caller = current_context().last_context;
+        auto& caller = _current_context->last_context;
         auto caller_id = context->caller_id;
-        context->caller_id = current_context_id();
+        context->caller_id = _current_context->id;
+        _current_context = context;
         coro::back::swap_context(caller, context->last_context);
         context->caller_id = caller_id;
     }
@@ -90,19 +107,14 @@ void context_pool::yield()
     switch_to(current_context().caller_id);
 }
 
-std::size_t context_pool::current_context_id() const
+const context_pool::context_data& context_pool::current_context() const
 {
-    return coro::back::context_id(coro::back::get_current_context());
+    return *_current_context;
 }
 
-context_pool::context_data& context_pool::current_context()
+const context_pool::context_data& context_pool::main_context() const
 {
-    return *find_context(current_context_id());
-}
-
-std::size_t context_pool::main_context() const
-{
-    return _main_context_id;
+    return *_main_context;
 }
 
 void context_pool::remove_context(std::size_t id)
@@ -119,6 +131,9 @@ void context_pool::release_context(context_pool::context_data& context)
 {
     coro::back::release_context(context.last_context);
     context.pool = nullptr;
+    context.caller_id = 0;
+    context.return_id = 0;
+    context.description = "dead";
 }
 
 context_pool::context_data* context_pool::find_unused_context()
@@ -138,7 +153,7 @@ context_pool::context_data* context_pool::find_context(std::size_t id)
 {
     for(auto& context : _pool)
     {
-        if(!context.unused() && context.id() == id)
+        if(!context.unused() && context.id == id)
         {
             return &context;
         }

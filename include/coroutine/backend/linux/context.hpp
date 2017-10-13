@@ -2,6 +2,9 @@
 #define COROUTINE_BACKEND_LINUX_CONTEXT_HPP
 
 #include <ucontext.h>
+#ifndef SIGSTKSZ
+#include <signal.h>
+#endif // SIGSTKSZ
 #include <coroutine/callback.hpp>
 #include <coroutine/sized_memory_block.hpp>
 

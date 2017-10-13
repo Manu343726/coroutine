@@ -12,24 +12,21 @@ void context_pool::pool_function(void* data)
         context->callback->invoke();
     }
 
-    auto caller_id = context->caller_id;
-    auto return_id = context->return_id;
+    context->state = context_pool::context_data::context_state::dead;
 
-    if(caller_id != 0)
+    auto* caller_context = context->caller_context;
+    auto* return_context = context->return_context;
+
+    if(caller_context != nullptr)
     {
-        pool->switch_to(caller_id);
+        pool->switch_to(caller_context);
     }
-    else if(return_id != 0)
+    else if(return_context != nullptr)
     {
-        pool->switch_to(return_id);
-    }
-    else
-    {
-        pool->switch_to(pool->_main_context->id);
+        pool->switch_to(return_context);
     }
 
-    pool->release_context(*context);
-    pool->switch_to(pool->_main_context->id);
+    pool->switch_to(pool->_main_context);
 }
 
 context_pool::context_pool() :
@@ -40,6 +37,7 @@ context_pool::context_pool() :
         _pool[i].stack = coro::back::allocate_stack(coro::back::stack_size());
         _pool[i].id = i;
         _pool[i].description = "dead";
+        _pool[i].state = context_pool::context_data::context_state::idle;
     }
 
     _pool_runner.function = &context_pool::pool_function;
@@ -48,11 +46,12 @@ context_pool::context_pool() :
     auto main_context = coro::back::get_current_context();
     auto* main_context_data = find_unused_context();
     main_context_data->last_context = main_context;
-    main_context_data->caller_id = 0;
-    main_context_data->return_id = 0;
+    main_context_data->caller_context = nullptr;
+    main_context_data->return_context = nullptr;
     main_context_data->pool = this;
     main_context_data->callback = nullptr;
     main_context_data->description = "main context";
+    main_context_data->state = context_pool::context_data::context_state::active;
     _main_context = main_context_data;
     _current_context = _main_context;
 }
@@ -79,32 +78,57 @@ std::size_t context_pool::make_context(const coro::callback& callback, const cha
         context_data->stack,
         current_context().last_context
     );
-    context_data->return_id = _current_context->id;
-    context_data->caller_id = context_data->return_id;
+    context_data->return_context = _current_context;
+    context_data->caller_context = _current_context;
     context_data->pool = this;
     context_data->callback = &callback;
     context_data->description = description;
+    context_data->state = context_pool::context_data::context_state::ready;
     return context_data->id;
 }
 
 void context_pool::switch_to(std::size_t context_id)
 {
-    auto* context = find_context(context_id);
+    switch_to(find_context(context_id));
+}
 
-    if(context != nullptr)
+void context_pool::switch_to(context_pool::context_data* context)
+{
+    if(context != nullptr && context->state == context_pool::context_data::context_state::ready &&
+       context != _current_context)
     {
         auto& caller = _current_context->last_context;
-        auto caller_id = context->caller_id;
-        context->caller_id = _current_context->id;
+        auto* old_caller_context = context->caller_context;
+        auto* old_current_context = _current_context;
+
+        context->caller_context = _current_context;
+
+        if(_current_context->state == context_pool::context_data::context_state::active)
+        {
+            _current_context->state = context_pool::context_data::context_state::ready;
+        }
         _current_context = context;
+        context->state = context_pool::context_data::context_state::active;
         coro::back::swap_context(caller, context->last_context);
-        context->caller_id = caller_id;
+        context->caller_context = old_caller_context;
+
+        if (context->state == context_pool::context_data::context_state::active)
+        {
+            context->state = context_pool::context_data::context_state::ready;
+        }
+        else if (context->state == context_pool::context_data::context_state::dead)
+        {
+            // Dead contexts are released here to make sure we never release an active
+            // context. This is not critical with ucontext since coro::back::release_context()
+            // is basically a noop there, but we have to be careful when releasing Win32 fibers.
+            release_context(*context);
+        }
     }
 }
 
 void context_pool::yield()
 {
-    switch_to(current_context().caller_id);
+    switch_to(current_context().caller_context);
 }
 
 const context_pool::context_data& context_pool::current_context() const
@@ -131,9 +155,10 @@ void context_pool::release_context(context_pool::context_data& context)
 {
     coro::back::release_context(context.last_context);
     context.pool = nullptr;
-    context.caller_id = 0;
-    context.return_id = 0;
+    context.caller_context = nullptr;
+    context.return_context = nullptr;
     context.description = "dead";
+    context.state = context_pool::context_data::context_state::idle;
 }
 
 context_pool::context_data* context_pool::find_unused_context()

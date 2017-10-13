@@ -16,14 +16,19 @@ class context_pool
 public:
     struct context_data
     {
-        std::size_t return_id;
-        std::size_t caller_id;
+        enum class context_state
+        {
+            idle, ready, active, io_wait, dead
+        };
+        context_data* caller_context;
+        context_data* return_context;
         context_pool* pool;
         const coro::callback* callback;
         coro::back::context last_context;
         coro::sized_memory_block stack;
         const char* description;
         std::size_t id;
+        context_state state;
 
         bool unused() const
         {
@@ -52,6 +57,7 @@ private:
     static void pool_function(void* pool);
     context_data* find_context(std::size_t id);
     context_data* find_unused_context();
+    void switch_to(context_pool::context_data* context);
 };
 
 context_pool& get_context_pool();

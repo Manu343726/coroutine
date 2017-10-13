@@ -22,6 +22,13 @@ namespace back
     context get_current_context();
     void swap_context(context& from, const context& to);
     context make_context(const callback& callback, const sized_memory_block& stack, const context& return_context);
+    void release_context(const context& context);
+    coro::sized_memory_block allocate_stack(std::size_t bytes);
+    void free_stack(const coro::sized_memory_block& stack);
+    constexpr std::size_t stack_size()
+    {
+        return 0;
+    }
 }
 
 }

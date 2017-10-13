@@ -44,6 +44,19 @@ context make_context(const callback& callback, const sized_memory_block& stack, 
     return context;
 }
 
+coro::sized_memory_block allocate_stack(std::size_t bytes)
+{
+    return { nullptr, 0 };
+}
+
+void free_stack(const coro::sized_memory_block& stack)
+{}
+
+void release_context(const context& context)
+{
+    ::DeleteFiber(context.handle);
+}
+
 }
 
 }

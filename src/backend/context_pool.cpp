@@ -141,6 +141,11 @@ const context_pool::context_data& context_pool::main_context() const
     return *_main_context;
 }
 
+const context_pool::context_data* context_pool::context(std::size_t id) const
+{
+    return find_context(id);
+}
+
 void context_pool::remove_context(std::size_t id)
 {
     auto* context = find_context(id);
@@ -175,6 +180,19 @@ context_pool::context_data* context_pool::find_unused_context()
 }
 
 context_pool::context_data* context_pool::find_context(std::size_t id)
+{
+    for(auto& context : _pool)
+    {
+        if(!context.unused() && context.id == id)
+        {
+            return &context;
+        }
+    }
+
+    return nullptr;
+}
+
+const context_pool::context_data* context_pool::find_context(std::size_t id) const
 {
     for(auto& context : _pool)
     {

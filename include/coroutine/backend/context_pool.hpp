@@ -45,6 +45,7 @@ public:
 
     const context_data& main_context() const;
     const context_data& current_context() const;
+    const context_data* context(std::size_t id) const;
 
 private:
     context_data _pool[128];
@@ -56,6 +57,7 @@ private:
     void release_context(context_data& context);
     static void pool_function(void* pool);
     context_data* find_context(std::size_t id);
+    const context_data* find_context(std::size_t id) const;
     context_data* find_unused_context();
     void switch_to(context_pool::context_data* context);
 };

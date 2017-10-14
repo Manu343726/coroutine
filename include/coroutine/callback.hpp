@@ -19,6 +19,7 @@ struct callback
 template<typename Function>
 struct stateful_callback : public callback
 {
+    stateful_callback() = default;
     stateful_callback(Function function) :
         stateful_function{std::move(function)}
     {

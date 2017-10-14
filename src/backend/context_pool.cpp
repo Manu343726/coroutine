@@ -131,6 +131,16 @@ void context_pool::yield()
     switch_to(current_context().caller_context);
 }
 
+void context_pool::yield(std::size_t callee)
+{
+    auto* context = find_context(callee);
+
+    if(context != nullptr)
+    {
+        switch_to(context->caller_context);
+    }
+}
+
 const context_pool::context_data& context_pool::current_context() const
 {
     return *_current_context;

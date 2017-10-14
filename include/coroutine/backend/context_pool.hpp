@@ -42,6 +42,7 @@ public:
     std::size_t make_context(const callback& callback, const char* description = "");
     void switch_to(std::size_t context);
     void yield();
+    void yield(std::size_t callee);
 
     const context_data& main_context() const;
     const context_data& current_context() const;

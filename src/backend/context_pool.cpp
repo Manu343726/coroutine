@@ -156,6 +156,11 @@ const context_pool::context_data* context_pool::context(std::size_t id) const
     return find_context(id);
 }
 
+bool context_pool::is_current_context(std::size_t id) const
+{
+    return id == _current_context->id;
+}
+
 void context_pool::remove_context(std::size_t id)
 {
     auto* context = find_context(id);

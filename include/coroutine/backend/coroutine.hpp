@@ -61,9 +61,9 @@ public:
         return _pool;
     }
 
-    void switch_to()
+    coroutine& switch_to()
     {
-        switch_to(*this);
+        return switch_to(*this);
     }
 
     coroutine& switch_to(const coroutine& coro)
@@ -80,9 +80,31 @@ public:
         return switch_to(coro);
     }
 
+    coroutine& asymmetric_switch()
+    {
+        if(is_current())
+        {
+            return yield();
+        }
+        else
+        {
+            return switch_to();
+        }
+    }
+
     coroutine& yield()
     {
         _pool->yield(_context);
+        return *this;
+    }
+
+    coroutine& assymetric_yield()
+    {
+        if(is_current())
+        {
+            yield();
+        }
+
         return *this;
     }
 
@@ -135,89 +157,14 @@ public:
                context->state != context_pool::context_data::context_state::idle;
     }
 
+    bool is_current() const
+    {
+        return _pool->is_current_context(_context);
+    }
+
     operator bool() const
     {
         return alive();
-    }
-
-    class iterator
-    {
-    public:
-        iterator(coroutine* self) :
-            _self{self}
-        {}
-
-        iterator& operator++()
-        {
-            _self->switch_to();
-            return *this;
-        }
-
-        iterator operator++(int)
-        {
-            return operator++();
-        }
-
-        friend bool operator==(iterator lhs, iterator rhs)
-        {
-            return lhs._self == rhs._self && !lhs._self->alive();
-        }
-
-        friend bool operator!=(iterator lhs, iterator rhs)
-        {
-            return !(lhs == rhs);
-        }
-
-        const T& operator*() const
-        {
-            _self->yield();
-            return _self->get();
-        }
-
-        class value_proxy
-        {
-        public:
-            value_proxy(coroutine* self) :
-                _self{self}
-            {}
-
-            template<typename Value>
-            const T& operator=(Value&& value)
-            {
-                return _self->set(std::forward<Value>(value));
-            }
-
-            operator const T&() const
-            {
-                return _self->get();
-            }
-
-        private:
-            coroutine* _self;
-        };
-
-        value_proxy operator*()
-        {
-            return {_self};
-        }
-
-    private:
-        coroutine* _self;
-    };
-
-    iterator begin()
-    {
-        return {this};
-    }
-
-    iterator end()
-    {
-        return {this};
-    }
-
-    static coroutine current()
-    {
-        return {};
     }
 
 private:

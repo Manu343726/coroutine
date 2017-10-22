@@ -47,6 +47,7 @@ public:
     const context_data& main_context() const;
     const context_data& current_context() const;
     const context_data* context(std::size_t id) const;
+    bool is_current_context(std::size_t id) const;
 
 private:
     context_data _pool[128];

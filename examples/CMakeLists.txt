@@ -1,1 +1,4 @@
 add_subdirectory(backend)
+
+add_executable(examples-backend-chaining_coroutines chaining_coroutines.cpp)
+target_link_libraries(examples-backend-chaining_coroutines PRIVATE coroutine)

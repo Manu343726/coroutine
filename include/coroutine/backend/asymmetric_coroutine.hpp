@@ -2,6 +2,7 @@
 #define COROUTINE_BACKEND_ASYMMETRIC_COROUTINE_HPP
 
 #include <coroutine/backend/coroutine.hpp>
+#include <coroutine/backend/detail/aligned_union.hpp>
 
 namespace coro
 {
@@ -28,7 +29,7 @@ public:
     using instance_t = coro::back::coroutine<T>;
     using reference_t = coro::back::coroutine<T>*;
 
-    using storage_t = typename std::aligned_union<
+    using storage_t = typename coro::back::detail::aligned_union<
         0,
         reference_t,
         instance_t
